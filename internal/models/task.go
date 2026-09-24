@@ -18,4 +18,6 @@ type Task struct {
 	AssignedToID *uint      `json:"assigned_to_id"`
 	AssignedTo   *User      `json:"assigned_to,omitempty"`
 	Comments     []Comment  `json:"comments,omitempty"`
+	Labels       []Label    `gorm:"many2many:task_labels;" json:"labels,omitempty"`
+	Subtasks     []Subtask  `json:"subtasks,omitempty"`
 }

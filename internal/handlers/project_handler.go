@@ -49,7 +49,49 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 		return
 	}
 
+	logActivity(h.DB, project.ID, userID, "creó el proyecto")
 	c.JSON(http.StatusCreated, project)
+}
+
+func (h *ProjectHandler) GetStats(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	projectID := parseUint(c.Param("id"))
+
+	if _, ok := isMember(h.DB, projectID, userID); !ok {
+		c.JSON(http.StatusForbidden, gin.H{"error": "not a member of this project"})
+		return
+	}
+
+	var todo, inProgress, done, overdue int64
+	h.DB.Model(&models.Task{}).Where("project_id = ? AND status = ?", projectID, "todo").Count(&todo)
+	h.DB.Model(&models.Task{}).Where("project_id = ? AND status = ?", projectID, "in_progress").Count(&inProgress)
+	h.DB.Model(&models.Task{}).Where("project_id = ? AND status = ?", projectID, "done").Count(&done)
+	h.DB.Model(&models.Task{}).
+		Where("project_id = ? AND status != ? AND due_date IS NOT NULL AND due_date < NOW()", projectID, "done").
+		Count(&overdue)
+
+	c.JSON(http.StatusOK, gin.H{
+		"todo":        todo,
+		"in_progress": inProgress,
+		"done":        done,
+		"overdue":     overdue,
+		"total":       todo + inProgress + done,
+	})
+}
+
+func (h *ProjectHandler) GetActivity(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	projectID := parseUint(c.Param("id"))
+
+	if _, ok := isMember(h.DB, projectID, userID); !ok {
+		c.JSON(http.StatusForbidden, gin.H{"error": "not a member of this project"})
+		return
+	}
+
+	var logs []models.ActivityLog
+	h.DB.Preload("User").Where("project_id = ?", projectID).Order("created_at DESC").Limit(50).Find(&logs)
+
+	c.JSON(http.StatusOK, logs)
 }
 
 func (h *ProjectHandler) GetProjects(c *gin.Context) {

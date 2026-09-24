@@ -28,6 +28,9 @@ func Connect(cfg *config.Config) *gorm.DB {
 		&models.ProjectMember{},
 		&models.Task{},
 		&models.Comment{},
+		&models.Label{},
+		&models.Subtask{},
+		&models.ActivityLog{},
 	); err != nil {
 		log.Fatalf("migration error: %v", err)
 	}

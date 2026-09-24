@@ -28,6 +28,8 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	projectHandler := handlers.NewProjectHandler(db)
 	taskHandler := handlers.NewTaskHandler(db)
 	commentHandler := handlers.NewCommentHandler(db)
+	labelHandler := handlers.NewLabelHandler(db)
+	subtaskHandler := handlers.NewSubtaskHandler(db)
 
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
@@ -52,10 +54,15 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		projects.POST("", projectHandler.CreateProject)
 		projects.GET("", projectHandler.GetProjects)
 		projects.GET("/:id", projectHandler.GetProject)
+		projects.GET("/:id/stats", projectHandler.GetStats)
+		projects.GET("/:id/activity", projectHandler.GetActivity)
 		projects.POST("/:id/members", projectHandler.AddMember)
 		projects.DELETE("/:id/members/:userId", projectHandler.RemoveMember)
 		projects.GET("/:id/tasks", taskHandler.GetTasks)
+		projects.GET("/:id/tasks/trash", taskHandler.GetTrash)
 		projects.POST("/:id/tasks", taskHandler.CreateTask)
+		projects.GET("/:id/labels", labelHandler.GetLabels)
+		projects.POST("/:id/labels", labelHandler.CreateLabel)
 	}
 
 	tasks := router.Group("/tasks")
@@ -63,8 +70,20 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	{
 		tasks.PUT("/:taskId", taskHandler.UpdateTask)
 		tasks.DELETE("/:taskId", taskHandler.DeleteTask)
+		tasks.POST("/:taskId/restore", taskHandler.RestoreTask)
 		tasks.GET("/:taskId/comments", commentHandler.GetComments)
 		tasks.POST("/:taskId/comments", commentHandler.CreateComment)
+		tasks.POST("/:taskId/labels", labelHandler.AttachLabel)
+		tasks.DELETE("/:taskId/labels/:labelId", labelHandler.DetachLabel)
+		tasks.GET("/:taskId/subtasks", subtaskHandler.GetSubtasks)
+		tasks.POST("/:taskId/subtasks", subtaskHandler.CreateSubtask)
+	}
+
+	subtasks := router.Group("/subtasks")
+	subtasks.Use(middleware.AuthRequired(cfg.JWTSecret))
+	{
+		subtasks.PUT("/:id", subtaskHandler.UpdateSubtask)
+		subtasks.DELETE("/:id", subtaskHandler.DeleteSubtask)
 	}
 
 	return router
